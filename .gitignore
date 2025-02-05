@@ -1,0 +1,14 @@
+
+.env
+
+.DS_Store  # macOS
+Thumbs.db  # Windows
+
+*.log
+*.tmp
+
+.vscode/
+.idea/
+*.swp
+
+.prettierrc

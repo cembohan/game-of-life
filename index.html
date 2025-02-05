@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="style.css" />
+    <title>Game of Life</title>
+    <style>
+      /* CSS for a centered, responsive canvas */
+      body {
+        margin: 0;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+        background: #a1a1a1;
+      }
+
+      #container {
+        text-align: center;
+      }
+
+      #gameCanvas {
+        border: 2px solid #333;
+        background: rgb(105, 105, 105);
+      }
+
+      /* Future controls styling */
+      .controls {
+        margin-top: 20px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="container">
+      <canvas id="gameCanvas"></canvas>
+      <div class="controls">
+        <div class="column">
+          <label for="gridSize">Grid Size:</label>
+          <input type="number" id="gridSize" min="10" max="100" value="50" />
+          <label for="cellSize">Cell Size (px):</label>
+          <input type="number" id="cellSize" min="5" max="50" value="10" />
+          <button id="applySettings">Apply</button>
+        </div>
+        <div class="column">
+          <button id="randomize">Randomize</button>
+          <button id="updateGrid">Update Grid</button>
+        </div>
+        <div class="column">
+          <label for="tickSpeed">Ticks per Second:</label>
+          <input type="range" id="tickSpeed" min="1" max="60" value="10" />
+          <span id="tickSpeedValue">10</span>
+          <button id="startPause">Start</button>
+          <button id="clear">Clear</button>
+        </div>
+      </div>
+      <div id="aliveCellCounter">
+        <p>Current Alive Cells: <span id="aliveCount">0</span></p>
+      </div>
+    </div>
+
+    <!-- Script tag will go here -->
+    <script src="script.js"></script>
+  </body>
+</html>
