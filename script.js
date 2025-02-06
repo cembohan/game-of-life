@@ -1,3 +1,10 @@
+/*TODO List:
+-Add a density option for Randomizing.
+-Add a way to draw on the grid.
+-Add a generation counter.
+-Add a way to possibly detect oscillations.
+*/
+
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 const canvasStyle = getComputedStyle(canvas);
@@ -15,6 +22,8 @@ const cellSizeInput = document.getElementById('cellSize');
 const applyButton = document.getElementById('applySettings');
 const updateButton = document.getElementById('updateGrid');
 const aliveCountElement = document.getElementById('aliveCount');
+const densityInput = document.getElementById('density');
+const densityValue = document.getElementById('densityValue');
 
 const tickSpeedInput = document.getElementById('tickSpeed');
 const tickSpeedValue = document.getElementById('tickSpeedValue');
@@ -26,6 +35,10 @@ let isRunning = false;
 let animationFrameId = null;
 let ticksPerSecond = parseInt(tickSpeedInput.value, 10);
 let tickSpeed = 1000 / ticksPerSecond;
+let density_percent = (100 - parseInt(densityInput.value, 10)) / 100;
+
+let isDrawing = false;
+let lastCell = { x: -1, y: -1 };
 
 // Function to draw the grid
 function drawGrid() {
@@ -71,10 +84,13 @@ const randomizeButton = document.getElementById('randomize');
 let grid = new Array(GRID_SIZE);
 function randomizeGrid() {
   // Create a 2D array to store cell states (alive = 1, dead = 0)
+  console.log(density_percent);
   grid = new Array(GRID_SIZE)
     .fill()
     .map(() =>
-      new Array(GRID_SIZE).fill().map(() => (Math.random() > 0.75 ? 1 : 0))
+      new Array(GRID_SIZE)
+        .fill()
+        .map(() => (Math.random() > density_percent ? 1 : 0))
     );
 
   // Draw the grid with the random states
@@ -163,12 +179,22 @@ tickSpeedInput.addEventListener('input', () => {
   tickSpeedValue.textContent = ticksPerSecond;
 });
 
+densityInput.addEventListener('input', () => {
+  density_percent = (100 - parseInt(densityInput.value, 10)) / 100;
+  densityValue.textContent = densityInput.value;
+});
+
 function updateTickSpeedLabel() {
   tickSpeedValue.textContent = tickSpeedInput.value;
 }
 
+function updateDensityLabel() {
+  densityValue.textContent = densityInput.value;
+}
+
 // Update the label on page load
 updateTickSpeedLabel();
+updateDensityLabel();
 
 startPauseButton.addEventListener('click', () => {
   if (isRunning) {
@@ -200,3 +226,60 @@ clearButton.addEventListener('click', () => {
   grid = new Array(GRID_SIZE).fill().map(() => new Array(GRID_SIZE).fill(0));
   drawCells(grid);
 });
+
+canvas.addEventListener('mousedown', startDrawing);
+canvas.addEventListener('mousemove', draw);
+canvas.addEventListener('mouseup', endDrawing);
+canvas.addEventListener('mouseleave', endDrawing);
+
+function startDrawing(e) {
+  isDrawing = true;
+  const { x, y } = getGridCell(e);
+  toggleCell(x, y);
+  lastCell = { x, y };
+}
+
+function draw(e) {
+  if (!isDrawing) return;
+  const { x, y } = getGridCell(e);
+
+  // Only update if we moved to a new cell
+  if (x !== lastCell.x || y !== lastCell.y) {
+    toggleCell(x, y);
+    lastCell = { x, y };
+  }
+}
+
+function endDrawing() {
+  isDrawing = false;
+  lastCell = { x: -1, y: -1 };
+}
+
+function getGridCell(e) {
+  const rect = canvas.getBoundingClientRect();
+  const mouseX = e.clientX - rect.left;
+  const mouseY = e.clientY - rect.top;
+
+  return {
+    x: Math.floor(mouseX / CELL_SIZE),
+    y: Math.floor(mouseY / CELL_SIZE),
+  };
+}
+
+function toggleCell(x, y) {
+  // Ensure coordinates are within grid bounds
+  if (x >= 0 && x < GRID_SIZE && y >= 0 && y < GRID_SIZE) {
+    grid[x][y] = grid[x][y] ? 0 : 1;
+    drawSingleCell(x, y); // Optimized to only redraw the changed cell
+  }
+}
+
+// Modified draw function to handle single cells
+function drawSingleCell(x, y) {
+  ctx.fillStyle = grid[x][y] ? 'black' : backgroundColor;
+  ctx.fillRect(x * CELL_SIZE, y * CELL_SIZE, CELL_SIZE, CELL_SIZE);
+
+  // Redraw grid lines for this cell
+  ctx.strokeStyle = GRID_COLOR;
+  ctx.strokeRect(x * CELL_SIZE, y * CELL_SIZE, CELL_SIZE, CELL_SIZE);
+}
