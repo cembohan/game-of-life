@@ -51,6 +51,10 @@
     border: 1px solid #ccc;
     border-radius: 5px;
     font-family: Arial, sans-serif;
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    gap: 50px;
   }
 
   #aliveCellCounter p {

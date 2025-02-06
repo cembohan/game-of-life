@@ -13,6 +13,9 @@ const backgroundColor = canvasStyle.backgroundColor;
 // Default settings
 let GRID_SIZE = 50; // Number of cells (e.g., 50x50)
 let CELL_SIZE = 10; // Size of each cell in pixels
+let grid;
+let generationCount = 0;
+let generationCounterElement = document.getElementById('generationCount');
 const GRID_COLOR = '#ddd';
 const GRID_LINE_WIDTH = 0.5;
 
@@ -40,6 +43,17 @@ let density_percent = (100 - parseInt(densityInput.value, 10)) / 100;
 let isDrawing = false;
 let lastCell = { x: -1, y: -1 };
 
+let previousStates = new Map();
+let cycleLogs = document.getElementById('cycleLogs');
+let loggedCycles = new Set();
+let cycleCounts = new Map();
+let firstGridHash = null; // Store the very first grid hash
+
+if (cycleLogs === null) {
+  cycleLogs = document.createElement('div');
+  cycleLogs.id = 'cycleLogs';
+  document.body.appendChild(cycleLogs);
+}
 // Function to draw the grid
 function drawGrid() {
   // Clear the canvas
@@ -70,18 +84,19 @@ function drawGrid() {
 
 // Initial grid draw
 drawGrid();
+initializeGrid();
 
 function updateGrid_base() {
   GRID_SIZE = Math.min(100, Math.max(10, parseInt(gridSizeInput.value, 10))); // Clamp between 10 and 100
   CELL_SIZE = Math.min(50, Math.max(5, parseInt(cellSizeInput.value, 10))); // Clamp between 5 and 50
   drawGrid();
+  initializeGrid();
 }
 
 // Add event listener to the apply button
 applyButton.addEventListener('click', updateGrid_base);
 
 const randomizeButton = document.getElementById('randomize');
-let grid = new Array(GRID_SIZE);
 function randomizeGrid() {
   // Create a 2D array to store cell states (alive = 1, dead = 0)
   console.log(density_percent);
@@ -116,7 +131,6 @@ function drawCells(grid) {
 }
 
 randomizeButton.addEventListener('click', randomizeGrid);
-
 function updateGrid() {
   aliveCount = 0;
   const newGrid = new Array(GRID_SIZE)
@@ -150,6 +164,47 @@ function updateGrid() {
   aliveCountElement.textContent = aliveCount;
   drawCells(newGrid);
   grid = newGrid;
+
+  generationCount++;
+  generationCounterElement.textContent = generationCount;
+
+  const gridHash = hashGrid(grid);
+
+  if (previousStates.has(gridHash)) {
+    const firstOccurrence = previousStates.get(gridHash);
+    let cycleInfo = cycleCounts.get(gridHash);
+
+    if (!cycleInfo) {
+      cycleInfo = {
+        cycleLength: null,
+        occurrences: 0,
+        startGeneration: firstOccurrence,
+        initialHash: gridHash,
+      };
+      cycleCounts.set(gridHash, cycleInfo);
+    }
+
+    cycleInfo.occurrences++;
+
+    if (cycleInfo.occurrences >= 2 && cycleInfo.cycleLength === null) {
+      cycleInfo.cycleLength = generationCount - cycleInfo.startGeneration;
+    } else if (
+      cycleInfo.occurrences >= 2 &&
+      gridHash === cycleInfo.initialHash
+    ) {
+      const cycleKey = `${cycleInfo.initialHash}-${cycleInfo.cycleLength}`;
+      if (!loggedCycles.has(cycleKey)) {
+        const logEntry = document.createElement('p');
+        logEntry.textContent = `Cycle detected! Length: ${cycleInfo.cycleLength} generations (Starting at generation ${cycleInfo.startGeneration})`;
+        cycleLogs.appendChild(logEntry);
+        loggedCycles.add(cycleKey);
+      }
+      // DO NOT reset cycleInfo here. Let it continue to track.
+    }
+  } else {
+    previousStates.set(gridHash, generationCount);
+    cycleCounts.clear(); // Clear cycleCounts when a new state is encountered
+  }
 }
 
 function checkNeighbors(grid, x, y) {
@@ -204,6 +259,13 @@ startPauseButton.addEventListener('click', () => {
   } else {
     isRunning = true;
     startPauseButton.textContent = 'Pause';
+    if (generationCount === 0) {
+      previousStates.clear();
+      cycleLogs.innerHTML = '';
+      loggedCycles.clear();
+      cycleCounts.clear();
+      firstGridHash = null; // Reset firstGridHash
+    }
     runSimulation();
   }
 });
@@ -223,10 +285,21 @@ clearButton.addEventListener('click', () => {
   cancelAnimationFrame(animationFrameId);
 
   // Clear the grid
-  grid = new Array(GRID_SIZE).fill().map(() => new Array(GRID_SIZE).fill(0));
-  drawCells(grid);
+  initializeGrid();
+  generationCount = 0;
+  generationCounterElement.textContent = generationCount;
+  previousStates.clear();
+  cycleLogs.innerHTML = '';
+  loggedCycles.clear();
+  cycleCounts.clear();
+  firstGridHash = null; // Reset firstGridHash
 });
 
+function initializeGrid() {
+  grid = new Array(GRID_SIZE).fill().map(() => new Array(GRID_SIZE).fill(0));
+  drawCells(grid);
+  updateInputFields();
+}
 canvas.addEventListener('mousedown', startDrawing);
 canvas.addEventListener('mousemove', draw);
 canvas.addEventListener('mouseup', endDrawing);
@@ -276,10 +349,30 @@ function toggleCell(x, y) {
 
 // Modified draw function to handle single cells
 function drawSingleCell(x, y) {
-  ctx.fillStyle = grid[x][y] ? 'black' : backgroundColor;
-  ctx.fillRect(x * CELL_SIZE, y * CELL_SIZE, CELL_SIZE, CELL_SIZE);
+  if (grid[x][y] === 0) {
+    ctx.fillStyle = backgroundColor;
+    ctx.fillRect(x * CELL_SIZE, y * CELL_SIZE, CELL_SIZE, CELL_SIZE);
 
-  // Redraw grid lines for this cell
-  ctx.strokeStyle = GRID_COLOR;
-  ctx.strokeRect(x * CELL_SIZE, y * CELL_SIZE, CELL_SIZE, CELL_SIZE);
+    ctx.strokeStyle = GRID_COLOR;
+    ctx.strokeRect(x * CELL_SIZE, y * CELL_SIZE, CELL_SIZE, CELL_SIZE);
+  } else {
+    ctx.fillStyle = 'black';
+    ctx.fillRect(x * CELL_SIZE, y * CELL_SIZE, CELL_SIZE, CELL_SIZE);
+  }
+}
+
+function updateInputFields() {
+  gridSizeInput.value = GRID_SIZE;
+  cellSizeInput.value = CELL_SIZE;
+}
+
+function hashGrid(grid) {
+  // Convert the 2D grid to a string for hashing.
+  let hashString = '';
+  for (let i = 0; i < GRID_SIZE; i++) {
+    for (let j = 0; j < GRID_SIZE; j++) {
+      hashString += grid[i][j];
+    }
+  }
+  return hashString; // A simple string hash.  Consider a better hash if performance is critical.
 }
