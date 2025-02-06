@@ -1,6 +1,7 @@
 Conway's Game of Life
 
 Welcome to my implementation of Conway's Game of Life! This project is my first interactive JavaScript project, created as part of my journey to learn the basics of JavaScript, HTML, and CSS. It's a simple yet fascinating simulation that demonstrates how complex patterns can emerge from a set of basic rules.
+
 What is Conway's Game of Life?
 
 Conway's Game of Life is a cellular automaton devised by mathematician John Horton Conway in 1970. It's a zero-player game, meaning its evolution is determined by its initial state, requiring no further input from the user. The game is played on a grid of cells, each of which can be alive (1) or dead (0). The state of each cell evolves based on a set of simple rules.
