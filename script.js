@@ -1,5 +1,4 @@
 /* Game of Life Refactored */
-
 class CycleDetector {
   constructor() {
     this.previousStates = new Map();
@@ -44,6 +43,8 @@ class CycleDetector {
       const logEntry = document.createElement('p');
       logEntry.textContent = `Cycle detected! Length: ${cycleInfo.cycleLength} generations (Starting at generation ${cycleInfo.startGeneration})`;
       document.getElementById('cycleLogs').appendChild(logEntry);
+      document.getElementById('cycleLogsContainer').scrollTop =
+        document.getElementById('cycleLogs').scrollHeight;
       this.loggedCycles.add(cycleKey);
     }
   }
@@ -187,7 +188,8 @@ const GameOfLife = (() => {
   }
 
   function drawCell(x, y, alive) {
-    ctx.fillStyle = alive ? 'black' : backgroundColor;
+    // Modified drawCell function
+    ctx.fillStyle = getCellColor(x, y); // Use getCellColor
     ctx.fillRect(
       x * state.cellSize,
       y * state.cellSize,
@@ -280,7 +282,12 @@ const GameOfLife = (() => {
     state.grid = state.grid.map((row) =>
       row.map(() => (Math.random() > state.density ? 1 : 0))
     );
+    if (useLocalizedColors) {
+      console.log('Regenerating localized colors');
+      generateLocalizedColors();
+    }
     drawAllCells();
+
     state.generation = 0;
     updateUI();
   }
@@ -309,6 +316,12 @@ const GameOfLife = (() => {
     state.aliveCells = 0;
     state.cycleDetector.reset();
     initializeGrid();
+
+    // Regenerate colors if staying in color mode
+    if (useLocalizedColors) {
+      generateLocalizedColors();
+    }
+
     updateUI();
   }
 
@@ -379,11 +392,89 @@ const GameOfLife = (() => {
     return div;
   }
 
+  let useLocalizedColors = false;
+  let gridColors;
+
+  const colorWheel = [
+    // 12 colors
+    'hsl(0, 100%, 50%)', // Red
+    'hsl(30, 100%, 50%)', // Orange
+    'hsl(60, 100%, 50%)', // Yellow
+    'hsl(90, 100%, 50%)', // Green-Yellow
+    'hsl(120, 100%, 50%)', // Green
+    'hsl(150, 100%, 50%)', // Cyan
+    'hsl(180, 100%, 50%)', // Light Blue
+    'hsl(210, 100%, 50%)', // Blue
+    'hsl(240, 100%, 50%)', // Indigo
+    'hsl(270, 100%, 50%)', // Violet
+    'hsl(300, 100%, 50%)', // Magenta
+    'hsl(330, 100%, 50%)', // Pink
+  ];
+
+  const colorButton = document.getElementById('color');
+  colorButton.addEventListener('click', () => {
+    useLocalizedColors = !useLocalizedColors;
+    if (useLocalizedColors) {
+      generateLocalizedColors(); // Always regenerate colors when enabling
+    }
+    drawAllCells();
+  });
+  elements.randomizeButton.parentNode.insertBefore(
+    colorButton,
+    elements.randomizeButton
+  );
+
+  function generateLocalizedColors() {
+    // Initialize gridColors with current grid size
+    gridColors = Array(state.gridSize)
+      .fill()
+      .map(() => Array(state.gridSize).fill(null));
+
+    const minRegionSize = 2;
+    const maxRegionSize = 8;
+    const numberOfRegions = Math.floor((state.gridSize * state.gridSize) / 10);
+
+    for (let n = 0; n < numberOfRegions; n++) {
+      const startX = Math.floor(Math.random() * state.gridSize);
+      const startY = Math.floor(Math.random() * state.gridSize);
+      const regionWidth = Math.min(
+        Math.floor(Math.random() * (maxRegionSize - minRegionSize + 1)) +
+          minRegionSize,
+        state.gridSize - startX
+      );
+      const regionHeight = Math.min(
+        Math.floor(Math.random() * (maxRegionSize - minRegionSize + 1)) +
+          minRegionSize,
+        state.gridSize - startY
+      );
+      const regionColor =
+        colorWheel[Math.floor(Math.random() * colorWheel.length)];
+
+      for (let x = startX; x < startX + regionWidth; x++) {
+        for (let y = startY; y < startY + regionHeight; y++) {
+          if (x < state.gridSize && y < state.gridSize) {
+            gridColors[x][y] = regionColor;
+          }
+        }
+      }
+    }
+  }
+
+  function getCellColor(x, y) {
+    if (state.grid[x][y] === 1) {
+      if (useLocalizedColors && gridColors && gridColors[x][y]) {
+        return gridColors[x][y];
+      } else {
+        return 'black';
+      }
+    } else {
+      return backgroundColor;
+    }
+  }
+
   // Expose public methods
   return { init };
 })();
-
-// Cycle Detection Module
 
 // Initialize the application
 GameOfLife.init();
